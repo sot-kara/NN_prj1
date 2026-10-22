@@ -1,6 +1,4 @@
 import numpy as np
-import torch
-from torchvision import datasets, transforms
 
 
 class KNN:
@@ -63,15 +61,16 @@ class KNN:
 
         
         train_norms = np.sum(self.X_train ** 2, axis=1)
-
+        print("Starting KNN prediction...")
         for start in range(0, len(X_test), self.batch_size):
+            print(f"Processing batch {start // self.batch_size + 1} of {len(X_test) // self.batch_size + 1}")
             X_batch = X_test[start:start + self.batch_size]
 
             
             test_norms = np.sum(X_batch ** 2, axis=1)
 
             # Euclidean distance calculation using:
-            # |x-y|^2 = |x|^2 + |y|^2- 2*x*y
+            # |x-y|^2 = |x|^2 + |y|^2- 2*x*y^T
             distances = (
                 test_norms[:, None]
                 + train_norms[None, :]
@@ -94,7 +93,8 @@ class KNN:
                 
                 prediction = classes[np.argmax(counts)]
                 predictions.append(prediction)
-
+        print("KNN finished processing all batches.")
+        print(f"Processed {len(X_test)} samples in total.")
         return np.asarray(predictions)
 
     def score(self, X_test, y_test):
@@ -106,39 +106,3 @@ class KNN:
 
         # return the accuracy of the model on the test data, the mean number of correct predictions
         return np.mean(predictions == y_test)
-
-
-# Main
-model = KNN(k=3);
-
-transform = transforms.ToTensor()
-
-train_data = datasets.CIFAR100(
-    root="data",
-    train=True,
-    transform=transform,
-    download=False
-)
-
-test_data = datasets.CIFAR100(
-    root="data",
-    train=False,
-    transform=transform,
-    download=False
-)
-
-X_train = torch.stack([image for image, label in train_data])
-y_train = torch.tensor([label for image, label in train_data])
-
-X_test = torch.stack([image for image, label in test_data])
-y_test = torch.tensor([label for image, label in test_data])
-
-
-X_train = X_train.reshape(X_train.shape[0], -1)
-X_test = X_test.reshape(X_test.shape[0], -1)[:100, :]
-y_test = y_test[:100]
-
-model.fit(X_train.numpy(), y_train.numpy())
-
-
-print("Accuracy:", model.score(X_test.numpy(), y_test.numpy()))
