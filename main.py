@@ -99,8 +99,8 @@ def main():
 
     # Initialize models
     knn1 = KNN(k=1, batch_size=100)
-    #knn3 = KNN(k=3, batch_size=100)
-    #centroid = ClassCentroid()
+    knn3 = KNN(k=3, batch_size=100)
+    centroid = ClassCentroid()
 
     # Evaluate both models
     results = []
@@ -112,7 +112,7 @@ def main():
             X_test, y_test,
         )
     )
-    '''
+    
     results.append(
         evaluate_model(
             knn3, "KNN3",
@@ -128,7 +128,7 @@ def main():
             X_test, y_test,
         )
     )
-    '''
+
     file_exists = os.path.isfile(CSV_RES)
     file_is_empty = not file_exists or os.path.getsize(CSV_RES) == 0
 
