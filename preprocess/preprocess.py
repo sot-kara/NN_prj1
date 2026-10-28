@@ -35,7 +35,7 @@ X_test_np = X_test.numpy().astype(np.float32)
 y_train_np = y_train.numpy()
 y_test_np = y_test.numpy()
 
-# Εκπαίδευση του PCA αποκλειστικά στα training data
+# Apply PCA to reduce dimensionality
 pca = PCA(
     n_components=100,
     svd_solver="randomized",
@@ -49,7 +49,7 @@ print("Training shape:", X_train_pca.shape)
 print("Test shape:", X_test_pca.shape)
 print("Explained variance:", pca.explained_variance_ratio_.sum())
 
-# Αποθήκευση των transformed datasets
+# Save the PCA-transformed data to a compressed .npz file
 np.savez_compressed(
     "cifar100_pca.npz",
     X_train=X_train_pca,
@@ -57,9 +57,3 @@ np.savez_compressed(
     y_train=y_train_np,
     y_test=y_test_np
 )
-
-# Αποθήκευση του εκπαιδευμένου PCA
-import joblib
-joblib.dump(pca, "pca_model.joblib")
-
-print("Dataset and PCA model saved!")
