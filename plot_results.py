@@ -11,19 +11,18 @@ OUTPUT_DIR = "figures"
 def plot_comparison(df, metric, title, ylabel, filename):
     """Generate a bar plot comparing models for a given metric."""
 
-    plt.figure(figsize=(9, 6))
+    fig, ax = plt.subplots(figsize=(9, 6))
 
     # Group results by model and calculate mean and standard deviation
     grouped = df.groupby("Model")[metric].agg(["mean", "std"])
-
-    # Replace NaN standard deviation (single experiment) with zero
     grouped["std"] = grouped["std"].fillna(0)
 
     models = grouped.index
     means = grouped["mean"]
     stds = grouped["std"]
 
-    plt.bar(
+    # Create bars with error bars
+    bars = ax.bar(
         models,
         means,
         yerr=stds,
@@ -31,20 +30,37 @@ def plot_comparison(df, metric, title, ylabel, filename):
         width=0.5
     )
 
-    plt.title(title, fontsize=14)
-    plt.ylabel(ylabel, fontsize=12)
-    plt.xlabel("Model", fontsize=12)
+    # Add exact value labels above the bars
+    labels = [
+        f"{value:.4f}" if metric == "Accuracy" else f"{value:.4f} s"
+        for value in means
+    ]
 
-    plt.grid(axis="y", linestyle="--", alpha=0.5)
-    plt.tight_layout()
+    ax.bar_label(
+        bars,
+        labels=labels,
+        padding=8,
+        fontsize=10
+    )
+
+    ax.set_title(title, fontsize=14)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.set_xlabel("Model", fontsize=12)
+
+    ax.grid(axis="y", linestyle="--", alpha=0.5)
+    ax.set_axisbelow(True)
+
+    # Leave space above the bars for labels and error bars
+    ax.margins(y=0.15)
+
+    fig.tight_layout()
 
     # Save figure
     filepath = os.path.join(OUTPUT_DIR, filename)
-    plt.savefig(filepath, dpi=300)
-    plt.close()
+    fig.savefig(filepath, dpi=300)
+    plt.close(fig)
 
     print(f"Saved: {filepath}")
-
 
 def plot():
 
