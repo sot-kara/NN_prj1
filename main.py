@@ -11,6 +11,8 @@ from  models.knn import KNN
 from models.class_centroid import ClassCentroid
 
 # global constants
+CIFAR_PATH = "data"
+CIFAR_PCA_PATH = "cifar100_pca.npz"
 TEST_DATA = 10000 # Number of test samples to use for evaluation
 USE_PCA = False  # Set to True to use PCA-transformed data, False to use raw data
 CSV_RES = "eval_results.csv"
@@ -61,14 +63,14 @@ def main():
     if(USE_PCA == False):
         transform = transforms.ToTensor()
         train_data = datasets.CIFAR100(
-            root="data",
+            root=CIFAR_PATH,
             train=True,
             transform=transform,
             download=False
         )
 
         test_data = datasets.CIFAR100(
-            root="data",
+            root=CIFAR_PATH,
             train=False,
             transform=transform,
             download=False
@@ -86,7 +88,7 @@ def main():
         X_test = X_test.reshape(X_test.shape[0], -1)[:TEST_DATA, :]
 
     else:
-        data = np.load("cifar100_pca.npz")
+        data = np.load(CIFAR_PCA_PATH)
         X_train = data["X_train"]
         X_test = data["X_test"][:TEST_DATA, :]
         y_train = data["y_train"]
