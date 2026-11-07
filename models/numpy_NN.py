@@ -1,4 +1,5 @@
 import numpy as np
+import cupy as cp
 
 class MLP:
     def __init__(self,layers, activation='relu', learning_rate=0.01, seed=42):
@@ -19,19 +20,19 @@ class MLP:
         self.biases = []
 
         for i in range(len(layers) - 1):
-            weight = rng.normal(0, 1, (layers[i], layers[i + 1])) # Initialize weights with a normal distribution
-            bias = np.zeros((1, layers[i + 1])) # Initialize biases to zero
-            self.weights.append(weight)
-            self.biases.append(bias)
-
+            weight = rng.normal(0, np.sqrt(2.0/layers[i]), (layers[i], layers[i + 1])) # Initialize weights with He initialization
+            bias = cp.zeros((1, layers[i + 1])) # Initialize biases to zero
+            self.weights.append(cp.asarray(weight))
+            self.biases.append(cp.asarray(bias))
+        
     @staticmethod
     def relu(x):
-        return np.maximum(0, x)
+        return cp.maximum(0, x)
 
     @staticmethod
     def softmax(x):
-        exp_x = np.exp(x - np.max(x, axis=1, keepdims=True)) # Subtract max for numerical stability
-        return exp_x / np.sum(exp_x, axis=1, keepdims=True)
+        exp_x = cp.exp(x - cp.max(x, axis=1, keepdims=True)) # Subtract max for numerical stability
+        return exp_x / cp.sum(exp_x, axis=1, keepdims=True)
 
     def forward(self, X):
         '''
@@ -41,9 +42,10 @@ class MLP:
         '''
         self.z_values = [] # Store the linear combinations (z values) for backpropagation
         self.activations = [X]
+
         for i in range(len(self.weights)):
             # Compute the linear combination of inputs and weights, add bias
-            z = np.dot(self.activations[-1], self.weights[i]) + self.biases[i]
+            z = cp.dot(self.activations[-1], self.weights[i]) + self.biases[i]
             self.z_values.append(z)
             if i < len(self.weights) - 1:
                 # For all layers except the last, use ReLU activation
@@ -60,7 +62,7 @@ class MLP:
             Calculate gradients and perform backpropagation.
 
             y: integer class labels
-            e.g. y = [1 2 1 10 9 ...] for a batch of size N
+            e.g. y = [1 2 0 10 99 ...] for a batch of size N
 
             Assumes softmax output and cross-entropy loss.
             """
@@ -71,7 +73,7 @@ class MLP:
             # the output logits, after combining with softmax.
             dZ = self.activations[-1].copy()
 
-            dZ[np.arange(batch_size), y] -= 1
+            dZ[cp.arange(batch_size), y] -= 1
             dZ /= batch_size
 
             grad_weights = [None] * len(self.weights)
@@ -84,7 +86,7 @@ class MLP:
 
                 # Gradient of loss with respect to weights and biases for current layer
                 grad_weights[i] = A_prev.T @ dZ
-                grad_biases[i] = np.sum(
+                grad_biases[i] = cp.sum(
                     dZ, axis=0, keepdims=True
                 )
 
@@ -113,7 +115,8 @@ class MLP:
         :return: Predicted class labels.
         '''
         output = self.forward(X)
-        return np.argmax(output, axis=1)
+        predictions = cp.argmax(output, axis=1)
+        return predictions
 
     def evaluate(self, X, y):
         '''
@@ -123,5 +126,5 @@ class MLP:
         :return: Accuracy of the model.
         '''
         predictions = self.predict(X)
-        accuracy = np.mean(predictions == y)
+        accuracy = cp.mean(predictions == y)
         return accuracy
