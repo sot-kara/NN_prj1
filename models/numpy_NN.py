@@ -1,130 +1,152 @@
-import numpy as np
 import cupy as cp
 
+from .nn_obj.layer import Layer
+from .nn_obj.adam import Adam
+
+
 class MLP:
-    def __init__(self,layers, activation='relu', learning_rate=0.01, seed=42):
-        '''
-    Initialize the MLP.
-        :param layers: List of integers representing the number of neurons in each layer.
-        :param activation: The activation function to use.
-        :param learning_rate: The learning rate for the optimizer.
-        :param seed: The seed for the random number generator.
-        '''
-        
-        self.layers = layers
-        self.activation = activation
-        self.learning_rate = learning_rate
-        rng = np.random.default_rng(seed)
 
-        self.weights = []
-        self.biases = []
+    def __init__(
+        self,
+        input_size,
+        layer_configs,
+        optimizer=None,
+        learning_rate=0.01
+    ):
 
-        for i in range(len(layers) - 1):
-            weight = rng.normal(0, np.sqrt(2.0/layers[i]), (layers[i], layers[i + 1])) # Initialize weights with He initialization
-            bias = cp.zeros((1, layers[i + 1])) # Initialize biases to zero
-            self.weights.append(cp.asarray(weight))
-            self.biases.append(cp.asarray(bias))
-        
-    @staticmethod
-    def relu(x):
-        return cp.maximum(0, x)
+        self.layers = []
 
-    @staticmethod
-    def softmax(x):
-        exp_x = cp.exp(x - cp.max(x, axis=1, keepdims=True)) # Subtract max for numerical stability
-        return exp_x / cp.sum(exp_x, axis=1, keepdims=True)
+        # Default optimizer
+        self.optimizer = (
+            optimizer if optimizer is not None
+            else Adam(learning_rate=learning_rate)
+        )
 
-    def forward(self, X):
-        '''
-        Perform a forward pass through the network.
-        :param X: Input data.
-        :return: Output of the network.
-        '''
-        self.z_values = [] # Store the linear combinations (z values) for backpropagation
-        self.activations = [X]
+        # Construct network
+        for i, config in enumerate(layer_configs):
 
-        for i in range(len(self.weights)):
-            # Compute the linear combination of inputs and weights, add bias
-            z = cp.dot(self.activations[-1], self.weights[i]) + self.biases[i]
-            self.z_values.append(z)
-            if i < len(self.weights) - 1:
-                # For all layers except the last, use ReLU activation
-                a = self.relu(z)
-            else:
-                # For the last layer, use softmax activation
-                a = self.softmax(z)
-            self.activations.append(a) # Store the activation for backpropagation
-        return self.activations[-1] # Return the output of the last layer
+            output_size = config["units"]
+
+            activation = config.get("activation", "relu")
+
+            dropout = config.get("dropout", 0.0)
+
+            # Output layer must not use dropout
+            if i == len(layer_configs) - 1:
+                dropout = 0.0
+
+                if activation != "softmax":
+                    raise ValueError(
+                        "Output layer must use softmax."
+                    )
+
+            layer = Layer(
+                input_size=input_size,
+                output_size=output_size,
+                activation=activation,
+                dropout=dropout
+            )
+
+            self.layers.append(layer)
+
+            input_size = output_size
+
+    # -------------------------
+    # Forward propagation
+    # -------------------------
+
+    def forward(self, X, training=True):
+
+        A = X
+
+        for layer in self.layers:
+            # Forward pass through each layer, A is used as input for the next layer
+            A = layer.forward(A, training)
+
+        return A
+
+    # -------------------------
+    # Backpropagation
+    # -------------------------
 
     def backward(self, y):
-            
-            """
-            Calculate gradients and perform backpropagation.
 
-            y: integer class labels
-            e.g. y = [1 2 0 10 99 ...] for a batch of size N
+        batch_size = y.shape[0]
 
-            Assumes softmax output and cross-entropy loss.
-            """
+        # Softmax + cross-entropy gradient
+        probabilities = self.layers[-1].a
 
-            batch_size = y.shape[0]
+        dZ = probabilities.copy()
 
-            # Gradient of cross-entropy loss with respect to
-            # the output logits, after combining with softmax.
-            dZ = self.activations[-1].copy()
+        dZ[cp.arange(batch_size), y] -= 1
 
-            dZ[cp.arange(batch_size), y] -= 1
-            dZ /= batch_size
+        dZ /= batch_size
 
-            grad_weights = [None] * len(self.weights)
-            grad_biases = [None] * len(self.biases)
+        gradients = []
 
-            # Propagate gradients backward through the network
-            for i in reversed(range(len(self.weights))):
-                A_prev = self.activations[i] 
-                W = self.weights[i]
+        # Traverse layers backwards
+        for i in reversed(range(len(self.layers))):
 
-                # Gradient of loss with respect to weights and biases for current layer
-                grad_weights[i] = A_prev.T @ dZ
-                grad_biases[i] = cp.sum(
-                    dZ, axis=0, keepdims=True
-                )
+            layer = self.layers[i]
 
-                if i > 0:
-                    dA_prev = dZ @ W.T
+            # Output layer already has its gradient
+            is_output_layer = (i == len(self.layers) - 1)
 
-                    # Derivative of ReLU
-                    dZ = dA_prev * (self.z_values[i - 1] > 0)
+            dA_prev, dW, db = layer.backward(
+                dZ,
+                output_gradient=is_output_layer
+            )
 
-            return grad_weights, grad_biases
-    
-    def update_parameters(self, grad_weights, grad_biases):
-        '''
-        Update the weights and biases using the computed gradients.
-        :param grad_weights: Gradients of the weights.
-        :param grad_biases: Gradients of the biases.
-        '''
-        for i in range(len(self.weights)):
-            self.weights[i] -= self.learning_rate * grad_weights[i]
-            self.biases[i] -= self.learning_rate * grad_biases[i]
+            gradients.insert(0, (dW, db))
+
+            dZ = dA_prev
+
+        return gradients
+
+    # -------------------------
+    # Parameter updates
+    # -------------------------
+
+    def update_parameters(self, gradients):
+
+        parameters = []
+        grads = []
+
+        for layer, (dW, db) in zip(self.layers, gradients):
+
+            parameters.extend([layer.weights, layer.biases])
+            grads.extend([dW, db])
+
+        self.optimizer.update(parameters, grads)
+
+    # -------------------------
+    # Training step
+    # -------------------------
+
+    def train_step(self, X, y):
+
+        self.forward(X, training=True)
+
+        gradients = self.backward(y)
+
+        self.update_parameters(gradients)
+
+    # -------------------------
+    # Prediction
+    # -------------------------
 
     def predict(self, X):
-        '''
-        Predict the class labels for the input data.
-        :param X: Input data.
-        :return: Predicted class labels.
-        '''
-        output = self.forward(X)
-        predictions = cp.argmax(output, axis=1)
-        return predictions
+
+        probabilities = self.forward(X, training=False)
+
+        return cp.argmax(probabilities, axis=1)
+
+    # -------------------------
+    # Evaluation
+    # -------------------------
 
     def evaluate(self, X, y):
-        '''
-        Evaluate the model's accuracy on the given data.
-        :param X: Input data.
-        :param y: True class labels.
-        :return: Accuracy of the model.
-        '''
+
         predictions = self.predict(X)
-        accuracy = cp.mean(predictions == y)
-        return accuracy
+
+        return cp.mean(predictions == y)

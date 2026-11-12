@@ -1,20 +1,23 @@
+from sklearn.preprocessing import StandardScaler
 import torch
 import numpy as np
+from models.nn_obj.adam import Adam
 import cupy as cp
 from torchvision import datasets, transforms
 from models.numpy_NN import MLP 
 
 def train_and_evaluate_numpy_nn(
     X_train, y_train, X_test, y_test,
-    layers, activation='relu',
-    learning_rate=0.01, seed=42,
-    epochs=100, batch_size=128
+    layer_configs,
+    learning_rate=0.01,
+    epochs=100, batch_size=128,
+    optimizer=None
 ):
     model = MLP(
-        layers,
-        activation=activation,
+        input_size=X_train.shape[1],
+        layer_configs=layer_configs,
         learning_rate=learning_rate,
-        seed=seed
+        optimizer=optimizer
     )
 
     n_samples = X_train.shape[0]
@@ -41,20 +44,22 @@ def train_and_evaluate_numpy_nn(
 
             # Cross-entropy loss
             m = y_batch.shape[0]
+
             loss = -cp.log(
                 cp.clip(
                     outputs[cp.arange(m), y_batch],
                     1e-12, 1.0
                 )
+
             ).mean()
 
             epoch_loss += loss.item() * m
 
-            # Backward pass
-            grad_weights, grad_biases = model.backward(y_batch)
+            # Backward pass to get the weight and bias gradients
+            gradients = model.backward(y_batch)
 
-            # Update parameters
-            model.update_parameters(grad_weights, grad_biases)
+            # Update parameters using the optimizer at the end of each mini-batch
+            model.update_parameters(gradients)
 
         epoch_loss /= n_samples
 
@@ -76,10 +81,12 @@ def train_and_evaluate_numpy_nn(
 
 
 
-# Load CIFAR-100 dataset
+#Load CIFAR-100 dataset
 transform = transforms.ToTensor()
-train_data = datasets.CIFAR100(root="data", train=True, transform=transform, download=True)
-test_data = datasets.CIFAR100(root="data", train=False, transform=transform, download=True)
+train_data = datasets.CIFAR10(root="data", train=True, transform=transform, download=True)
+test_data = datasets.CIFAR10(root="data", train=False, transform=transform, download=True)
+
+
 
 # Prepare training and testing data
 X_train = torch.stack([image for image, label in train_data]).numpy().reshape(len(train_data), -1)
@@ -88,6 +95,10 @@ y_train = torch.tensor([label for image, label in train_data]).numpy()
 X_test = torch.stack([image for image, label in test_data]).numpy().reshape(len(test_data), -1)
 y_test = torch.tensor([label for image, label in test_data]).numpy()
 
+# scaler = StandardScaler()
+
+# X_train = scaler.fit_transform(X_train).astype(np.float32)
+# X_test = scaler.transform(X_test).astype(np.float32)
 
 print("X_train shape:", X_train.shape)
 print("X_train dtype:", X_train.dtype)
@@ -109,7 +120,19 @@ X_test = cp.asarray(X_test, dtype=cp.float32)
 y_test = cp.asarray(y_test, dtype=cp.int64)
 
 # Define the architecture of the neural network
-layers = [X_train.shape[1], 1024, 512, 256, 100]  # Input layer size, hidden layers sizes, output layer size
+layer_configs = [
+    {"units": 512, "activation": "relu", "dropout": 0.2},
+    {"units": 256, "activation": "relu", "dropout": 0.2},
+    {"units": 10, "activation": "softmax", "dropout": 0.0}
+]
 
 # Train and evaluate the NumpyNN model
-train_and_evaluate_numpy_nn(X_train, y_train, X_test, y_test, layers, activation='relu', learning_rate=0.09, seed=42, epochs=100)
+model = train_and_evaluate_numpy_nn(X_train, y_train, X_test, y_test, layer_configs, learning_rate=0.001, epochs=50, batch_size=128, optimizer=Adam(learning_rate=0.001))
+
+# Percentages of accuracy for each class
+for class_idx in range(10):
+    class_mask = (y_test == class_idx)
+    # get the name of the class from CIFAR-10 dataset
+    class_name = datasets.CIFAR10(root="data", train=False, download=False).classes[class_idx]
+    class_accuracy = cp.mean((model.forward(X_test[class_mask]).argmax(axis=1) == y_test[class_mask]).astype(cp.float32))
+    print(f"Class {class_idx} ({class_name}): Accuracy = {class_accuracy.item() * 100:.2f}%")
