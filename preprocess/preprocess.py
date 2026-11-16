@@ -37,7 +37,7 @@ y_test_np = y_test.numpy()
 
 # Apply PCA to reduce dimensionality
 pca = PCA(
-    n_components=100,
+    n_components=1000,
     svd_solver="randomized",
     random_state=42
 )
