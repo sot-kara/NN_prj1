@@ -75,7 +75,7 @@ class Conv:
     def backward(self, dA):
 
         # Gradient with respect to pre-activation
-        dZ = ReLU.backward(dA, self.feat_maps)
+        dZ = dA * ReLU.backward(self.feat_maps, self.feat_maps)
 
         # Gradients
         dw = cp.zeros_like(self.filters)
@@ -83,8 +83,6 @@ class Conv:
 
         dX_pad = cp.zeros_like(self.input_pad)
         dX = cp.zeros_like(self.input)
-
-        N = self.input.shape[0]
 
         out_height = self.feat_maps.shape[2]
         out_width = self.feat_maps.shape[3]
@@ -139,5 +137,5 @@ class Conv:
             ]
         else:
             dX = dX_pad
-
+            
         return dX, dw, db

@@ -7,9 +7,12 @@ class MaxPool:
         self.pool_size = pool_size
         self.stride = stride
         self.argmax = None  # To store the indices of the maximum values during forward pass to use in backward pass
-
+        self.input_shape = None  # To store the input shape for backward pass
+        
     def forward(self, X):
         N, C, H, W = X.shape
+
+        self.input_shape = X.shape  # Store the input shape for backward pass
 
         # Calculate output dimensions
         out_height = (H - self.pool_size) // self.stride + 1
@@ -40,7 +43,7 @@ class MaxPool:
 
     def backward(self, dA):
         N, C, H, W = dA.shape
-        dX = cp.zeros((N, C, H * self.stride, W * self.stride), dtype=cp.float32)
+        dX = cp.zeros(self.input_shape, dtype=cp.float32)
 
         for i in range(H):
             for j in range(W):

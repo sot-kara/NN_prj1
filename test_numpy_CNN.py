@@ -65,18 +65,18 @@ def train_and_evaluate_numpy_nn(
         epoch_loss /= n_samples
 
         # Evaluate after completing the epoch
-        train_acc = model.evaluate(X_train, y_train)
-        test_acc = model.evaluate(X_test, y_test)
+        train_acc = model.evaluate(X_train, y_train, batch_size=batch_size)
+        test_acc = model.evaluate(X_test, y_test, batch_size=batch_size)
 
         print(
             f"Epoch [{epoch + 1}/{epochs}]: "
             f"Loss={epoch_loss:.4f}, "
-            f"Train Acc={train_acc.item():.4f}, "
-            f"Test Acc={test_acc.item():.4f}"
+            f"Train Acc={train_acc:.4f}, "
+            f"Test Acc={test_acc:.4f}"
         )
 
-    accuracy = model.evaluate(X_test, y_test)
-    print(f"Test Accuracy: {accuracy.item() * 100:.2f}%")
+    accuracy = model.evaluate(X_test, y_test, batch_size=batch_size)
+    print(f"Test Accuracy: {accuracy * 100:.2f}%")
 
     return model
 
@@ -90,11 +90,13 @@ test_data = datasets.CIFAR100(root="data", train=False, transform=transform, dow
 
 
 # Prepare training and testing data, shape (num_samples, channels, height, width)
-X_train = torch.stack([image for image, label in train_data]).numpy().reshape(len(train_data), 3, 32, 32)[0:256, :, :, :]
-y_train = torch.tensor([label for image, label in train_data]).numpy()[0:256]
+X_train = torch.stack([image for image, label in train_data]).numpy().reshape(len(train_data), 3, 32, 32)
+y_train = torch.tensor([label for image, label in train_data]).numpy()
 
-X_test = torch.stack([image for image, label in test_data]).numpy().reshape(len(test_data), 3, 32, 32)[0:256, :, :, :]
-y_test = torch.tensor([label for image, label in test_data]).numpy()[0:256]
+X_test = torch.stack([image for image, label in test_data]).numpy().reshape(len(test_data), 3, 32, 32)
+y_test = torch.tensor([label for image, label in test_data]).numpy()
+
+
 
 # scaler = StandardScaler()
 
@@ -122,11 +124,19 @@ y_test = cp.asarray(y_test, dtype=cp.int64)
 
 # Define the architecture of the neural network
 layer_configs = [
+    # Conv 1
     {"type": "conv", "num_filters": 32, "filter_size": 3, "stride": 1, "padding": 1},
+    # {"type": "conv", "num_filters": 32, "filter_size": 3, "stride": 1, "padding": 1},
     {"type": "maxpool", "pool_size": 2, "stride": 2},
+
+    # # Conv 2
+    # {"type": "conv", "num_filters": 64, "filter_size": 3, "stride": 1, "padding": 1},
+    {"type": "conv", "num_filters": 64, "filter_size": 3, "stride": 1, "padding": 1},
+    {"type": "maxpool", "pool_size": 2, "stride": 2},
+
+    # Dense Fully Connected Layers
     {"type": "flatten"},
-    {"type": "dense", "units": 512, "activation": "relu", "dropout": 0.2},
-    {"type": "dense", "units": 256, "activation": "relu", "dropout": 0.2},
+    {"type": "dense", "units": 256, "activation": "relu", "dropout": 0.3},
     {"type": "dense", "units": 100, "activation": "softmax", "dropout": 0.0}
 ]
 

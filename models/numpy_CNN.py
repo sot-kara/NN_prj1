@@ -57,11 +57,13 @@ class CNN:
             elif layer_type == "dense":
                 output_size = config["units"]
                 activation = config.get("activation", "relu")
+                dropout = config.get("dropout", 0.0)
 
                 # The input in a dense layer would have been flattened, and be in batches of shape (batch_size, input_size)
                 layer = Layer(input_size=input_shape[1] if len(input_shape) > 1 else input_shape[0], 
                               output_size=output_size, 
-                              activation=activation)
+                              activation=activation,
+                              dropout=dropout)
                 
                 # Update input shape for the next layer
                 input_shape = (output_size,)
@@ -73,10 +75,10 @@ class CNN:
 
     def forward(self, X, training=True):
         for layer in self.layers:
-            if isinstance(layer, (Conv, MaxPool, Flatten, Layer)):
-                X = layer.forward(X)
-            elif isinstance(layer, Layer):
+            if isinstance(layer, Layer):
                 X = layer.forward(X, training=training)
+            else:
+                X = layer.forward(X)
         return X
     
     def backward(self, y):
@@ -144,16 +146,35 @@ class CNN:
 
         self.update_parameters(gradients)
 
-    def predict(self, X):
+    def predict(self, X, batch_size=128):
+        predictions = []
 
-        probabilities = self.forward(X, training=False)
+        for start in range(0, X.shape[0], batch_size):
+            end = min(start + batch_size, X.shape[0])
 
-        return cp.argmax(probabilities, axis=1)
+            X_batch = cp.asarray(X[start:end])
+
+            probabilities = self.forward(X_batch, training=False)
+            batch_predictions = cp.argmax(probabilities, axis=1)
+
+            predictions.append(batch_predictions)
+
+        return cp.concatenate(predictions)
     
-    def evaluate(self, X, y):
+    def evaluate(self, X, y, batch_size=128):
+        n_samples = X.shape[0]
+        correct = 0
 
-        predictions = self.predict(X)
+        for start in range(0, n_samples, batch_size):
+            end = min(start + batch_size, n_samples)
 
-        accuracy = cp.mean(predictions == y)
+            X_batch = cp.asarray(X[start:end])
+            y_batch = cp.asarray(y[start:end])
 
+            probabilities = self.forward(X_batch, training=False)
+            predictions = cp.argmax(probabilities, axis=1)
+
+            correct += int(cp.sum(predictions == y_batch).item())
+
+        accuracy = correct / n_samples
         return accuracy
