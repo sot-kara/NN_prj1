@@ -57,8 +57,9 @@ class CNN:
             elif layer_type == "dense":
                 output_size = config["units"]
                 activation = config.get("activation", "relu")
-                
-                layer = Layer(input_size=input_shape[0], 
+
+                # The input in a dense layer would have been flattened, and be in batches of shape (batch_size, input_size)
+                layer = Layer(input_size=input_shape[1] if len(input_shape) > 1 else input_shape[0], 
                               output_size=output_size, 
                               activation=activation)
                 

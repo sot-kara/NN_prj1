@@ -84,17 +84,17 @@ def train_and_evaluate_numpy_nn(
 
 #Load CIFAR-100 dataset
 transform = transforms.ToTensor()
-train_data = datasets.CIFAR10(root="data", train=True, transform=transform, download=True)
-test_data = datasets.CIFAR10(root="data", train=False, transform=transform, download=True)
+train_data = datasets.CIFAR100(root="data", train=True, transform=transform, download=False)
+test_data = datasets.CIFAR100(root="data", train=False, transform=transform, download=False)
 
 
 
 # Prepare training and testing data, shape (num_samples, channels, height, width)
-X_train = torch.stack([image for image, label in train_data]).numpy().reshape(len(train_data), 3, 32, 32)
-y_train = torch.tensor([label for image, label in train_data]).numpy()
+X_train = torch.stack([image for image, label in train_data]).numpy().reshape(len(train_data), 3, 32, 32)[0:256, :, :, :]
+y_train = torch.tensor([label for image, label in train_data]).numpy()[0:256]
 
-X_test = torch.stack([image for image, label in test_data]).numpy().reshape(len(test_data), 3, 32, 32)
-y_test = torch.tensor([label for image, label in test_data]).numpy()
+X_test = torch.stack([image for image, label in test_data]).numpy().reshape(len(test_data), 3, 32, 32)[0:256, :, :, :]
+y_test = torch.tensor([label for image, label in test_data]).numpy()[0:256]
 
 # scaler = StandardScaler()
 
@@ -127,16 +127,16 @@ layer_configs = [
     {"type": "flatten"},
     {"type": "dense", "units": 512, "activation": "relu", "dropout": 0.2},
     {"type": "dense", "units": 256, "activation": "relu", "dropout": 0.2},
-    {"type": "dense", "units": 10, "activation": "softmax", "dropout": 0.0}
+    {"type": "dense", "units": 100, "activation": "softmax", "dropout": 0.0}
 ]
 
 # Train and evaluate the NumpyNN model
 model = train_and_evaluate_numpy_nn(X_train, y_train, X_test, y_test, layer_configs, learning_rate=0.001, epochs=50, batch_size=128, optimizer=Adam(learning_rate=0.001))
 
 # Percentages of accuracy for each class
-for class_idx in range(10):
+for class_idx in range(100):
     class_mask = (y_test == class_idx)
     # get the name of the class from CIFAR-10 dataset
-    class_name = datasets.CIFAR10(root="data", train=False, download=False).classes[class_idx]
+    class_name = datasets.CIFAR100(root="data", train=False, download=False).classes[class_idx]
     class_accuracy = cp.mean((model.forward(X_test[class_mask]).argmax(axis=1) == y_test[class_mask]).astype(cp.float32))
     print(f"Class {class_idx} ({class_name}): Accuracy = {class_accuracy.item() * 100:.2f}%")

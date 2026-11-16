@@ -22,11 +22,12 @@ class Conv:
         outputs = [] # List to store the output feature maps of size (num_filters, out_height, out_width)
 
         self.input = X  # Store the input for use in backward pass
-        print ("Input shape:", X.shape)
+
         # Pad the input if padding is specified
         if self.padding > 0:
             self.input_pad = cp.pad(X, 
-                       ((0, 0), 
+                       ((0, 0),
+                        (0, 0),
                         (self.padding, self.padding), 
                         (self.padding, self.padding)),
                         mode='constant')
@@ -37,24 +38,26 @@ class Conv:
             # Convolve each filter with the input
             
             # Calculate the output dimensions
+            n_batches = self.input_pad.shape[0]
             out_height = (self.input_shape[1] - self.filter_size + 2 * self.padding) // self.stride + 1
             out_width = (self.input_shape[2] - self.filter_size + 2 * self.padding) // self.stride + 1
 
             # Initialize the current output feature map
-            output = cp.zeros((out_height, out_width))
+            output = cp.zeros((n_batches, out_height, out_width),dtype=cp.float32)
 
             for kh in range(self.filter_size):
                 for kw in range(self.filter_size):
 
                     region = self.input_pad[
                         :,
+                        :,
                         kh:kh + out_height * self.stride:self.stride,
                         kw:kw + out_width * self.stride:self.stride
                     ]
 
                     output += cp.sum(
-                        region * self.filters[i, :, kh, kw][:, None, None],
-                        axis=0
+                        region * self.filters[i, :, kh, kw][None,:, None, None],
+                        axis=1
                     )
 
             output += self.biases[i]
@@ -63,54 +66,78 @@ class Conv:
 
             outputs.append(output)
 
-        self.feat_maps = cp.array(outputs)
+        self.feat_maps = cp.stack(outputs,axis=1)  # Stack the outputs along the channel dimension to get shape (batch_size, num_filters, out_height, out_width)
         return self.feat_maps
 
                     
         
         
     def backward(self, dA):
-        # Perform  backward pass for convolutional layer
-        # dA is the gradient of the loss with respect to the output of this layer (shape: (num_filters, out_height, out_width))
 
-        # Gradient of the loss with respect to the pre-activation output 
-        dZ = ReLU.backward(dA, self.feat_maps)  
-       
-        # Gradient with respect to weights
+        # Gradient with respect to pre-activation
+        dZ = ReLU.backward(dA, self.feat_maps)
+
+        # Gradients
         dw = cp.zeros_like(self.filters)
-        
-        # Gradient with respect to biases
         db = cp.zeros_like(self.biases)
 
-        # Gradient with respect to input
-        dX_pad = cp.zeros_like(self.input_pad)  # Initialize dX_pad with the same shape as padded input
-        dX = cp.zeros_like(self.input)  # Initialize dX with the same shape as input
+        dX_pad = cp.zeros_like(self.input_pad)
+        dX = cp.zeros_like(self.input)
+
+        N = self.input.shape[0]
+
+        out_height = self.feat_maps.shape[2]
+        out_width = self.feat_maps.shape[3]
 
         for i in range(self.num_filters):
 
-            for h in range(self.feat_maps.shape[1]):
-                for w in range(self.feat_maps.shape[2]):
-                    # Iterate over each element in the output feature map of current filter
-                    
-                    h_start = h * self.stride
-                    h_end = h_start + self.filter_size
-                    w_start = w * self.stride
-                    w_end = w_start + self.filter_size
+            for kh in range(self.filter_size):
+                for kw in range(self.filter_size):
 
-                    # Extract the region from the input that corresponds to the current output element for the current filter
-                    region = self.input_pad[:, h_start:h_end, w_start:w_end]
+                    h_start = kh
+                    h_end = kh + out_height * self.stride
 
-                    # Update gradients for weights and biases
-                    dw[i] += region * dZ[i, h, w]
-                    db[i] += dZ[i, h, w]
+                    w_start = kw
+                    w_end = kw + out_width * self.stride
 
-                    # Update gradient for input to propagate to the previous layer
-                    dX_pad[:, h_start:h_end, w_start:w_end] += self.filters[i] * dZ[i, h, w]
-        
-        # Remove padding from dX
+                    # Extract corresponding input values
+                    region = self.input_pad[
+                        :,
+                        :,
+                        h_start:h_end:self.stride,
+                        w_start:w_end:self.stride
+                    ]
+
+                    # Gradient with respect to weights
+                    dw[i, :, kh, kw] += cp.einsum(
+                        'nhw,nchw->c',
+                        dZ[:, i],
+                        region
+                    )
+
+                    # Gradient with respect to biases
+                    db[i] += cp.sum(dZ[:, i])
+
+                    # Gradient with respect to input
+                    dX_pad[
+                        :,
+                        :,
+                        h_start:h_end:self.stride,
+                        w_start:w_end:self.stride
+                    ] += (
+                        dZ[:, i][:, None, :, :]
+                        * self.filters[i, :, kh, kw][None, :, None, None]
+                    )
+
+        # Remove padding
         if self.padding > 0:
-            dX = dX_pad[:, self.padding:-self.padding, self.padding:-self.padding]
+            dX = dX_pad[
+                :,
+                :,
+                self.padding:-self.padding,
+                self.padding:-self.padding
+            ]
         else:
             dX = dX_pad
-        
+
         return dX, dw, db

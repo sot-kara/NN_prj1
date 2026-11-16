@@ -83,8 +83,8 @@ def train_and_evaluate_numpy_nn(
 
 #Load CIFAR-100 dataset
 transform = transforms.ToTensor()
-train_data = datasets.CIFAR10(root="data", train=True, transform=transform, download=True)
-test_data = datasets.CIFAR10(root="data", train=False, transform=transform, download=True)
+train_data = datasets.CIFAR100(root="data", train=True, transform=transform, download=False)
+test_data = datasets.CIFAR100(root="data", train=False, transform=transform, download=False)
 
 
 
