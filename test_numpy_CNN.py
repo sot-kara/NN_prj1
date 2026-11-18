@@ -63,7 +63,7 @@ def train_and_evaluate_numpy_nn(
             model.update_parameters(gradients)
 
         epoch_loss /= n_samples
-
+        
         # Evaluate after completing the epoch
         train_acc = model.evaluate(X_train, y_train, batch_size=batch_size)
         test_acc = model.evaluate(X_test, y_test, batch_size=batch_size)
@@ -126,11 +126,11 @@ y_test = cp.asarray(y_test, dtype=cp.int64)
 layer_configs = [
     # Conv 1
     {"type": "conv", "num_filters": 32, "filter_size": 3, "stride": 1, "padding": 1},
-    # {"type": "conv", "num_filters": 32, "filter_size": 3, "stride": 1, "padding": 1},
+    {"type": "conv", "num_filters": 32, "filter_size": 3, "stride": 1, "padding": 1},
     {"type": "maxpool", "pool_size": 2, "stride": 2},
 
     # # Conv 2
-    # {"type": "conv", "num_filters": 64, "filter_size": 3, "stride": 1, "padding": 1},
+    {"type": "conv", "num_filters": 64, "filter_size": 3, "stride": 1, "padding": 1},
     {"type": "conv", "num_filters": 64, "filter_size": 3, "stride": 1, "padding": 1},
     {"type": "maxpool", "pool_size": 2, "stride": 2},
 
