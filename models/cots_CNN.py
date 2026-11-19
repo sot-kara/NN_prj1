@@ -258,7 +258,7 @@ def main():
     # Hyperparameters
     batch_size = 128
     learning_rate = 0.001
-    epochs = 50
+    epochs = 150
 
     # DataLoaders
     train_loader = DataLoader(
@@ -290,8 +290,8 @@ def main():
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer,
-        T_max=50,
-        eta_min=1e-6
+        T_max=epochs,
+        eta_min=1e-5
     )
 
     # Training
