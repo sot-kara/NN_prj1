@@ -12,6 +12,7 @@ from models.numpy_CNN import CNN
 from utils.cupy_trainer import CupyTrainer
 from utils.model_saver import ModelSaver
 from utils.results_manager import ResultsManager
+from utils.history_manager import HistoryManager
 
 
 class ExperimentRunner:
@@ -27,6 +28,10 @@ class ExperimentRunner:
 
         self.results_manager = ResultsManager(
             self.results_dir / "csv" / "experiments.csv"
+        )
+
+        self.history_manager = HistoryManager(
+            results_dir=f'{self.results_dir}/history'
         )
 
 
@@ -156,6 +161,12 @@ class ExperimentRunner:
             val_data
         )
 
+        if config.get("save_history", True):
+            self.history_manager.save_history(
+                experiment_name=name,
+                history=history
+            )
+
         cp.cuda.runtime.deviceSynchronize()
         total_training_time = time.perf_counter() - start_time
 
@@ -179,6 +190,7 @@ class ExperimentRunner:
         average_epoch_time = (
             sum(history["epoch_time"]) / len(history["epoch_time"])
         )
+
 
         # Prepare results
         result = {
