@@ -161,14 +161,16 @@ class ExperimentRunner:
             val_data
         )
 
+
+
+        cp.cuda.runtime.deviceSynchronize()
+        total_training_time = time.perf_counter() - start_time
+
         if config.get("save_history", True):
             self.history_manager.save_history(
                 experiment_name=name,
                 history=history
             )
-
-        cp.cuda.runtime.deviceSynchronize()
-        total_training_time = time.perf_counter() - start_time
 
         # Find best epoch
         best_val_accuracy = max(history["val_accuracy"])

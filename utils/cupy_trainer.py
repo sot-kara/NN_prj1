@@ -206,7 +206,7 @@ class CupyTrainer:
                         "batch_size": self.batch_size,
                         "learning_rate": getattr(
                             self.model.optimizer,
-                            "learning_rate",
+                            "lr",
                             None
                         )
                     }

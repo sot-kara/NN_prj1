@@ -14,13 +14,13 @@ from utils.data_loader import load_cifar100, load_cupy_dataset
 
 RESULTS_DIR = Path("results")
 
-EPOCHS = 20
-BATCH_SIZE = 32
+EPOCHS = 3
+BATCH_SIZE = 256
 LEARNING_RATE = 0.001
 
 SEED = 42
 
-NUM_CLASSES = 10
+NUM_CLASSES = 100
 
 TRAIN_PER_CLASS = 100
 VAL_PER_CLASS = 20
@@ -37,8 +37,8 @@ experiments = [
         "name": "mlp_small",
         "model_type": "mlp",
         "layer_configs": [
-            {"units": 64, "activation": "relu"},
-            {"units": 10, "activation": "softmax"}
+            {"units": 128, "activation": "relu"},
+            {"units": 100, "activation": "softmax"}
         ],
         "epochs": EPOCHS,
         "batch_size": BATCH_SIZE,
@@ -48,12 +48,29 @@ experiments = [
     },
 
     {
+        "name": "mlp_mid",
+        "model_type": "mlp",
+        "layer_configs": [
+            {"units": 512, "activation": "relu"},
+            {"units": 256, "activation": "relu"},
+            {"units": 128, "activation": "relu"},
+            {"units": 100, "activation": "softmax"}
+        ],
+        "epochs": EPOCHS,
+        "batch_size": BATCH_SIZE,
+        "learning_rate": LEARNING_RATE,
+        "save_history": True,
+        "input_size": 32 * 32 * 3,  # CIFAR-100 images are 32x32 with 3 channels
+    },
+    {
         "name": "mlp_large",
         "model_type": "mlp",
         "layer_configs": [
+            {"units": 1024, "activation": "relu"},
+            {"units": 512, "activation": "relu"},
             {"units": 256, "activation": "relu"},
             {"units": 128, "activation": "relu"},
-            {"units": 10, "activation": "softmax"}
+            {"units": 100, "activation": "softmax"}
         ],
         "epochs": EPOCHS,
         "batch_size": BATCH_SIZE,
@@ -70,8 +87,8 @@ experiments = [
              "stride": 1, "padding": 1},
             {"type": "maxpool", "pool_size": 2, "stride": 2},
             {"type": "flatten"},
-            {"type": "dense", "units": 32, "activation": "relu"},
-            {"type": "dense", "units": 10, "activation": "softmax"}
+            {"type": "dense", "units": 128, "activation": "relu"},
+            {"type": "dense", "units": 100, "activation": "softmax"}
         ],
         "epochs": EPOCHS,
         "batch_size": BATCH_SIZE,
@@ -82,7 +99,7 @@ experiments = [
     },
 
     {
-        "name": "cnn_large",
+        "name": "cnn_mid",
         "model_type": "cnn",
         "layer_configs": [
             {"type": "conv", "num_filters": 16, "filter_size": 3,
@@ -93,7 +110,30 @@ experiments = [
             {"type": "maxpool", "pool_size": 2, "stride": 2},
             {"type": "flatten"},
             {"type": "dense", "units": 128, "activation": "relu"},
-            {"type": "dense", "units": 10, "activation": "softmax"}
+            {"type": "dense", "units": 100, "activation": "softmax"}
+        ],
+        "epochs": EPOCHS,
+        "batch_size": BATCH_SIZE,
+        "learning_rate": LEARNING_RATE,
+        "save_history": True,
+        "input_shape": (3, 32, 32),  # CIFAR-100 images are 32x32 with 3 channels
+    },
+        {
+        "name": "cnn_large",
+        "model_type": "cnn",
+        "layer_configs": [
+            {"type": "conv", "num_filters": 32, "filter_size": 3,
+             "stride": 1, "padding": 1},
+             {"type": "conv", "num_filters": 32, "filter_size": 3,
+             "stride": 1, "padding": 1},
+            {"type": "maxpool", "pool_size": 2, "stride": 2},
+            {"type": "conv", "num_filters": 64, "filter_size": 3,
+             "stride": 1, "padding": 1},
+            {"type": "maxpool", "pool_size": 2, "stride": 2},
+            {"type": "flatten"},
+            {"type": "dense", "units": 256, "activation": "relu"},
+            {"type": "dense", "units": 128, "activation": "relu"},
+            {"type": "dense", "units": 100, "activation": "softmax"}
         ],
         "epochs": EPOCHS,
         "batch_size": BATCH_SIZE,
@@ -166,8 +206,8 @@ def main():
     data = load_cifar100()
 
     # Use the same 10-class subset as previous experiments
-    print("Creating dataset subset...")
-    data = create_subset(data)
+    #print("Creating dataset subset...")
+   # data = create_subset(data)
 
     # Transfer data to GPU
     data = load_cupy_dataset(data)
