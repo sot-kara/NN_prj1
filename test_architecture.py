@@ -14,7 +14,7 @@ from utils.data_loader import load_cifar100, load_cupy_dataset
 
 RESULTS_DIR = Path("results")
 
-EPOCHS = 3
+EPOCHS = 100
 BATCH_SIZE = 256
 LEARNING_RATE = 0.001
 
@@ -142,58 +142,7 @@ experiments = [
         "input_shape": (3, 32, 32),  # CIFAR-100 images are 32x32 with 3 channels
     }
 ]
-def create_subset(data):
 
-    rng = np.random.default_rng(SEED)
-    classes = np.arange(NUM_CLASSES)
-
-    def select(X, y, samples_per_class):
-
-        X_selected = []
-        y_selected = []
-
-        for new_label, original_label in enumerate(classes):
-
-            indices = np.where(y == original_label)[0]
-
-            chosen = rng.choice(
-                indices,
-                size=samples_per_class,
-                replace=False
-            )
-
-            X_selected.append(X[chosen])
-            y_selected.append(
-                np.full(samples_per_class, new_label, dtype=np.int64)
-            )
-
-        X_selected = np.concatenate(X_selected)
-        y_selected = np.concatenate(y_selected)
-
-        permutation = rng.permutation(len(y_selected))
-
-        return X_selected[permutation], y_selected[permutation]
-
-    X_train, y_train = select(
-        data["X_train"], data["y_train"], TRAIN_PER_CLASS
-    )
-
-    X_val, y_val = select(
-        data["X_val"], data["y_val"], VAL_PER_CLASS
-    )
-
-    X_test, y_test = select(
-        data["X_test"], data["y_test"], TEST_PER_CLASS
-    )
-
-    return {
-        "X_train": X_train,
-        "y_train": y_train,
-        "X_val": X_val,
-        "y_val": y_val,
-        "X_test": X_test,
-        "y_test": y_test
-    }
 
 # ==========================================
 # MAIN
@@ -205,9 +154,6 @@ def main():
     print("Loading CIFAR-100...")
     data = load_cifar100()
 
-    # Use the same 10-class subset as previous experiments
-    #print("Creating dataset subset...")
-   # data = create_subset(data)
 
     # Transfer data to GPU
     data = load_cupy_dataset(data)
