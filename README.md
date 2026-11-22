@@ -11,6 +11,10 @@ Repository for the 1st project of Neural Networks and Deep learning class
 ## Dataset
 This project uses CIFAR-100 for the training and evaluation. This dataset should be unziped in a directory called data (it should create a subdirectory called cifar-100-python, but the project takes the root directorty), otherwise change the path in main.py.
 
+## Producing PCA
+- If you want to create the PCA versions of the dataset, run preprocess and change the name and PCA components.
+- This project uses cifar100_pca.npz, cifar256_pca.npz and cifar1024_pca.npz with 100, 256 and 1024 Principal components respectively
+
 ## Usage of KNN and CC classifiers
 - Run main.py to evaluate the classifiers on the test datasets and get the output in a eval_results.csv file
 - Run plot_knn_cc_results.py to produce the plots from the eval_results.csv file
