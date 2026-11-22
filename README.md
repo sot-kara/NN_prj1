@@ -1,6 +1,13 @@
 # NN_prj1
 Repository for the 1st project of Neural Networks and Deep learning class
 
+## Dependencies
+- cupy
+- numpy
+- scikit-learn
+- pytorch and pytorch-vision
+- matplotlib
+
 ## Dataset
 This project uses CIFAR-100 for the training and evaluation. This dataset should be unziped in a directory called data (it should create a subdirectory called cifar-100-python, but the project takes the root directorty), otherwise change the path in main.py.
 
