@@ -48,6 +48,19 @@ DROPOUT_EXPERIMENTS = {
     "Dropout 0.7": "mlp_mid_dropout_0.7",
 }
 
+
+# PCA experiments (MLP-mid only)
+PCA_EXPERIMENTS = {
+    "MLP-Medium (Baseline)": "mlp_mid",
+    "PCA 100": "mlp_mid_pca_100",
+    "PCA 256": "mlp_mid_pca_256",
+    "PCA 1024": "mlp_mid_pca_1024",
+}
+
+OPTIMIZED_CNN = {
+    "CNN Optimized": "cnn_optimized",
+}
+
 MAX_DROPOUT_EPOCHS = 50
 
 MAX_LR_EPOCHS = 50
@@ -726,6 +739,315 @@ def plot_dropout_comparison():
 
         plt.show()
         plt.close(fig)
+
+
+# ============================================================
+# FIGURE 6: PCA - VALIDATION ACCURACY VS EPOCH
+# ============================================================
+
+def plot_pca_validation_accuracy():
+
+    fig, ax = plt.subplots(figsize=(11, 6))
+
+    colors = {
+        "MLP-Medium (Baseline)": "black",
+        "PCA 100": "tab:blue",
+        "PCA 256": "tab:orange",
+        "PCA 1024": "tab:green",
+    }
+
+    for label, experiment_name in PCA_EXPERIMENTS.items():
+
+        history = load_history(experiment_name)
+        history = history.sort_values("epoch")
+
+        accuracy = normalize_accuracy(
+            history["val_accuracy"].to_numpy()
+        )
+
+        ax.plot(
+            history["epoch"],
+            accuracy,
+            label=label,
+            color=colors[label],
+            linewidth=2.5,
+            alpha=0.9,
+        )
+
+    ax.set_title(
+        "MLP-Medium - PCA Validation Accuracy Comparison",
+        fontsize=16,
+        fontweight="bold",
+        pad=15
+    )
+
+    ax.set_xlabel("Epoch", fontsize=13)
+    ax.set_ylabel("Validation Accuracy (%)", fontsize=13)
+
+    ax.set_ylim(0, 100)
+
+    ax.grid(
+        True,
+        linestyle=":",
+        linewidth=0.8,
+        alpha=0.5
+    )
+
+    ax.legend(
+        fontsize=11,
+        loc="best",
+        frameon=True,
+        fancybox=True
+    )
+
+    fig.tight_layout()
+
+    output_path = OUTPUT_DIR / "pca_validation_accuracy.png"
+
+    fig.savefig(
+        output_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    print(f"Saved: {output_path}")
+
+    plt.show()
+    plt.close(fig)
+
+
+# ============================================================
+# FIGURE 7: PCA - TRAINING TIME COMPARISON
+# ============================================================
+
+def plot_pca_training_time():
+
+    results = {}
+
+    for label, experiment_name in PCA_EXPERIMENTS.items():
+
+        results[label] = load_training_time(experiment_name)
+
+    labels = list(results.keys())
+    values = list(results.values())
+
+    colors = [
+        "black",
+        "tab:blue",
+        "tab:orange",
+        "tab:green",
+    ]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    bars = ax.bar(
+        labels,
+        values,
+        color=colors,
+        width=0.65,
+        edgecolor="black",
+        linewidth=0.7
+    )
+
+    ax.bar_label(
+        bars,
+        labels=[f"{v:.2f}s" for v in values],
+        padding=4,
+        fontsize=10
+    )
+
+    ax.set_title(
+        "MLP-Medium - PCA Training Time Comparison",
+        fontsize=16,
+        fontweight="bold",
+        pad=15
+    )
+
+    ax.set_xlabel("Model", fontsize=12)
+    ax.set_ylabel("Training Time (seconds)", fontsize=12)
+
+    ax.grid(
+        axis="y",
+        linestyle="--",
+        alpha=0.4
+    )
+
+    ax.set_axisbelow(True)
+    ax.set_ylim(0, max(values) * 1.15)
+
+    fig.tight_layout()
+
+    output_path = OUTPUT_DIR / "pca_training_time.png"
+
+    fig.savefig(
+        output_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    print(f"Saved: {output_path}")
+
+    plt.show()
+    plt.close(fig)
+
+
+# ============================================================
+# FIGURE 8: PCA - BEST CHECKPOINT TEST ACCURACY
+# ============================================================
+
+def plot_pca_test_accuracy():
+
+    results = {}
+
+    for label, experiment_name in PCA_EXPERIMENTS.items():
+
+        results[label] = load_test_accuracy(experiment_name)
+
+    labels = list(results.keys())
+    values = list(results.values())
+
+    colors = [
+        "black",
+        "tab:blue",
+        "tab:orange",
+        "tab:green",
+    ]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    bars = ax.bar(
+        labels,
+        values,
+        color=colors,
+        width=0.65,
+        edgecolor="black",
+        linewidth=0.7
+    )
+
+    ax.bar_label(
+        bars,
+        labels=[f"{v:.2f}%" for v in values],
+        padding=4,
+        fontsize=10
+    )
+
+    ax.set_title(
+        "MLP-Medium - PCA Test Accuracy Comparison",
+        fontsize=16,
+        fontweight="bold",
+        pad=15
+    )
+
+    ax.set_xlabel("Model", fontsize=12)
+    ax.set_ylabel("Test Accuracy (%)", fontsize=12)
+
+    ax.grid(
+        axis="y",
+        linestyle="--",
+        alpha=0.4
+    )
+
+    ax.set_axisbelow(True)
+    ax.set_ylim(0, max(values) * 1.15)
+
+    fig.tight_layout()
+
+    output_path = OUTPUT_DIR / "pca_test_accuracy.png"
+
+    fig.savefig(
+        output_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    print(f"Saved: {output_path}")
+
+    plt.show()
+    plt.close(fig)
+
+
+# ============================================================
+# FIGURE 9: OPTIMIZED CNN - TRAINING VS VALIDATION ACCURACY
+# ============================================================
+
+def plot_optimized_cnn_accuracy():
+
+    experiment_name = OPTIMIZED_CNN["CNN Optimized"]
+
+    history = load_history(experiment_name)
+    history = history.sort_values("epoch")
+
+    epochs = history["epoch"].to_numpy()
+
+    train_accuracy = normalize_accuracy(
+        history["train_accuracy"].to_numpy()
+    )
+
+    val_accuracy = normalize_accuracy(
+        history["val_accuracy"].to_numpy()
+    )
+
+    fig, ax = plt.subplots(figsize=(11, 6))
+
+    ax.plot(
+        epochs,
+        train_accuracy,
+        label="Training Accuracy",
+        color="tab:blue",
+        linestyle="-",
+        linewidth=2.5
+    )
+
+    ax.plot(
+        epochs,
+        val_accuracy,
+        label="Validation Accuracy",
+        color="tab:orange",
+        linestyle="--",
+        linewidth=2.5
+    )
+
+    ax.set_title(
+        "Optimized CNN - Training vs Validation Accuracy",
+        fontsize=16,
+        fontweight="bold",
+        pad=15
+    )
+
+    ax.set_xlabel("Epoch", fontsize=13)
+    ax.set_ylabel("Accuracy (%)", fontsize=13)
+
+    ax.set_xlim(1, len(epochs))
+    ax.set_ylim(0, 100)
+
+    ax.grid(
+        True,
+        linestyle=":",
+        linewidth=0.8,
+        alpha=0.5
+    )
+
+    ax.legend(
+        fontsize=11,
+        loc="best",
+        frameon=True,
+        fancybox=True
+    )
+
+    fig.tight_layout()
+
+    output_path = OUTPUT_DIR / "cnn_optimized_accuracy.png"
+
+    fig.savefig(
+        output_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    print(f"Saved: {output_path}")
+
+    plt.show()
+    plt.close(fig)
 # ============================================================
 # MAIN
 # ============================================================
@@ -744,5 +1066,12 @@ if __name__ == "__main__":
 
     plot_dropout_comparison()
 
+    plot_pca_validation_accuracy()
+    
+    plot_pca_training_time()
+    
+    plot_pca_test_accuracy()
+
+    plot_optimized_cnn_accuracy()
 
     print("\nAll plots generated successfully!")

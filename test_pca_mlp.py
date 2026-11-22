@@ -51,6 +51,37 @@ experiments = [
         "input_size": 100,  # CIFAR-100 images are 32x32 with 3 channels, but after PCA we have 100 features
         
     },
+    {
+        "name": "mlp_mid_pca_256",
+        "model_type": "mlp",
+        "layer_configs": [
+            {"units": 512, "activation": "relu"},
+            {"units": 256, "activation": "relu"},
+            {"units": 128, "activation": "relu"},
+            {"units": 100, "activation": "softmax"}
+        ],
+        "epochs": EPOCHS,
+        "batch_size": BATCH_SIZE,
+        "learning_rate": LEARNING_RATE,
+        "save_history": True,
+        "input_size": 256,  # CIFAR-100 images are 32x32 with 3 channels, but after PCA we have 256 features
+    },
+
+    {
+        "name": "mlp_mid_pca_1024",
+        "model_type": "mlp",
+        "layer_configs": [
+            {"units": 512, "activation": "relu"},
+            {"units": 256, "activation": "relu"},
+            {"units": 128, "activation": "relu"},
+            {"units": 100, "activation": "softmax"}
+        ],
+        "epochs": EPOCHS,
+        "batch_size": BATCH_SIZE,
+        "learning_rate": LEARNING_RATE,
+        "save_history": True,
+        "input_size": 1024,  # CIFAR-100 images are 32x32 with 3 channels, but after PCA we have 1024 features
+    }
 ]
 
 
@@ -84,14 +115,15 @@ def load_pca_dataset(filepath):
 # ==========================================
 
 def main():
-
+    pca_data = []
     # Load dataset
     print("Loading CIFAR-100 pca...")
-    data = load_pca_dataset("cifar100_pca.npz")
+    data_100 = load_pca_dataset("cifar100_pca.npz")
+    data_256 = load_pca_dataset("cifar256_pca.npz")
+    data_1024 = load_pca_dataset("cifar1024_pca.npz")
 
+    pca_data = [data_100, data_256, data_1024]
 
-    # Transfer data to GPU
-    data = load_cupy_dataset(data)
 
     print("\nStarting experiments...\n")
 
@@ -112,6 +144,12 @@ def main():
         FIGURES_DIR = experiment_dir / "figures"
         FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
+        if "pca_100" in name:
+            data = load_cupy_dataset(pca_data[0])
+        elif "pca_256" in name:
+            data = load_cupy_dataset(pca_data[1])
+        elif "pca_1024" in name:
+            data = load_cupy_dataset(pca_data[2])
         # Create runner for this experiment
         runner = ExperimentRunner(
             dataset=data,

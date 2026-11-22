@@ -37,5 +37,3 @@ class HistoryManager:
                     "val_loss": history["val_loss"][epoch],
                     "val_accuracy": history["val_accuracy"][epoch]
                 })
-
-        print(f"Training history saved to {filepath}")
