@@ -37,7 +37,7 @@ y_test_np = y_test.numpy()
 
 # Apply PCA to reduce dimensionality
 pca = PCA(
-    n_components=1000,
+    n_components=1024,
     svd_solver="randomized",
     random_state=42
 )
@@ -51,7 +51,7 @@ print("Explained variance:", pca.explained_variance_ratio_.sum())
 
 # Save the PCA-transformed data to a compressed .npz file
 np.savez_compressed(
-    "cifar100_pca.npz",
+    "cifar1024_pca.npz",
     X_train=X_train_pca,
     X_test=X_test_pca,
     y_train=y_train_np,
